@@ -43,6 +43,18 @@ impl Expression {
 
         Ok(())
     }
+
+    /// Binding power when printed: higher binds tighter
+    fn prec(&self) -> u8 {
+        match self {
+            Expression::Add(_) => 1,
+            Expression::Mul(_) => 2,
+            Expression::Num(n) if *n < 0 => 2, // -3 prints like -1*3
+            Expression::Pow(..) if self.as_denominator().is_some() => 2, // prints as 1/x
+            Expression::Pow(..) => 3,
+            _ => 4, // Num, Sym, Func: atoms
+        }
+    }
 }
 
 impl fmt::Display for Expression {

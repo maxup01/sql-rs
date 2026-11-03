@@ -45,6 +45,12 @@ impl Expression {
     }
 }
 
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&format_expression(self))
+    }
+}
+
 enum Token {
     Num(i64),
     Sym(String),

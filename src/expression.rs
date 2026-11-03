@@ -44,3 +44,15 @@ impl Expression {
         Ok(())
     }
 }
+
+enum Token {
+    Num(i64),
+    Sym(String),
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Caret,
+    LParen,
+    RParen,
+}

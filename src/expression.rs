@@ -1,4 +1,5 @@
 use std::boxed::Box;
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
@@ -6,6 +7,7 @@ pub enum Expression {
     Sym(String),
     Add(Vec<Expression>),
     Mul(Vec<Expression>),
+    Pow(Box<Expression>, Box<Expression>),
     Func {
         name: String,
         argument: Box<Expression>,
@@ -13,12 +15,11 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn parse(expression: &str) -> Result<Self, crate::error::ParseError> {
-        Self::parentheses_correct(expression).map_err(|err| {
-            crate::error::ParseError::new(crate::error::ParseErrorKind::UnbalancedParentheses, err)
-        })?;
+    pub fn parse(expression: &str) -> Result<Self, ParseError> {
+        Self::parentheses_correct(expression)
+            .map_err(|err| ParseError::new(ParseErrorKind::UnbalancedParentheses, err))?;
 
-        Ok(Expression::Num(0))
+        Ok(Num(0))
     }
 
     fn parentheses_correct(expression: &str) -> Result<(), String> {
@@ -96,6 +97,7 @@ impl fmt::Display for Expression {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 enum Token {
     Num(i64),
     Sym(String),

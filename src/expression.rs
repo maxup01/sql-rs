@@ -73,6 +73,21 @@ impl Expression {
             _ => None,
         }
     }
+
+    /// If this is base^(negative), return what goes under the fraction bar:
+    /// y^(-1) → y, y^(-2) → y^2, y^(-n) → y^n
+    fn as_denominator(&self) -> Option<Expression> {
+        let Expression::Pow(base, exp) = self else {
+            return None;
+        };
+        let pos = exp.split_neg()?;
+
+        Some(if pos == Expression::Num(1) {
+            (**base).clone()
+        } else {
+            Expression::Pow(base.clone(), Box::new(pos))
+        })
+    }
 }
 
 impl fmt::Display for Expression {

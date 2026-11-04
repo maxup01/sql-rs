@@ -55,6 +55,24 @@ impl Expression {
             _ => 4, // Num, Sym, Func: atoms
         }
     }
+
+    /// If the term is negative, return its positive part: -3*x → 3*x, -1*x → x
+    fn split_neg(&self) -> Option<Expression> {
+        match self {
+            Expression::Num(n) if *n < 0 => Some(Expression::Num(-n)),
+            Expression::Mul(fs) => match fs.first() {
+                Some(Expression::Num(-1)) if fs.len() == 2 => Some(fs[1].clone()),
+                Some(Expression::Num(-1)) => Some(Expression::Mul(fs[1..].to_vec())),
+                Some(Expression::Num(n)) if *n < 0 => {
+                    let mut fs = fs.clone();
+                    fs[0] = Expression::Num(-n);
+                    Some(Expression::Mul(fs))
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Expression {

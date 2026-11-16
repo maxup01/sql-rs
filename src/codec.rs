@@ -1,15 +1,15 @@
 use bitcode::{Decode, Encode};
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use std::io;
 use std::marker::PhantomData;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-pub struct BitcodeCodec<In, Out> {
+pub struct BitcodeCodec<T> {
     inner: LengthDelimitedCodec,
-    _types: PhantomData<(In, Out)>,
+    _types: PhantomData<T>,
 }
 
-impl<In, Out> BitcodeCodec<In, Out> {
+impl<T> BitcodeCodec<T> {
     pub fn new() -> Self {
         let inner = LengthDelimitedCodec::builder()
             .max_frame_length(1024 * 1024)
@@ -22,8 +22,8 @@ impl<In, Out> BitcodeCodec<In, Out> {
     }
 }
 
-impl<In: for<'a> Decode<'a>, Out> Decoder for BitcodeCodec<In, Out> {
-    type Item = In;
+impl<T: for<'a> Decode<'a>> Decoder for BitcodeCodec<T> {
+    type Item = T;
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut tokio_util::bytes::BytesMut) -> io::Result<Option<Self::Item>> {
@@ -36,10 +36,10 @@ impl<In: for<'a> Decode<'a>, Out> Decoder for BitcodeCodec<In, Out> {
     }
 }
 
-impl<In, Out: Encode> Encoder<Out> for BitcodeCodec<In, Out> {
+impl<T: Encode> Encoder<T> for BitcodeCodec<T> {
     type Error = io::Error;
 
-    fn encode(&mut self, item: Out, dst: &mut tokio_util::bytes::BytesMut) -> io::Result<()> {
+    fn encode(&mut self, item: T, dst: &mut tokio_util::bytes::BytesMut) -> io::Result<()> {
         self.inner.encode(Bytes::from(bitcode::encode(&item)), dst)
     }
 }

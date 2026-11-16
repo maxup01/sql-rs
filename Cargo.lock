@@ -97,6 +97,7 @@ name = "sql-rs"
 version = "0.1.0"
 dependencies = [
  "interprocess",
+ "tokio",
 ]
 
 [[package]]

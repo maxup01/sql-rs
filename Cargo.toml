@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 interprocess = { version = "2.2.0", features = ["tokio"] }
+tokio = { version = "1.54.0", features = ["rt-multi-thread"] }

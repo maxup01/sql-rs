@@ -1,5 +1,5 @@
 use sql_rs::server::Server;
 
 fn main() {
-    Server::build();
+    let _ = Server::build();
 }

@@ -17,6 +17,15 @@ impl Server {
         Ok(Self { listener })
     }
 
+    pub fn serve(&self) -> io::Result<()> {
+        loop {
+            let connection = match self.listener.accept() {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+        }
+    }
+
     fn create_socket(socket_name: &str) -> io::Result<Listener> {
         let name = socket_name.to_ns_name::<GenericNamespaced>()?;
         let opts = ListenerOptions::default();

@@ -3,6 +3,14 @@ name = "sql-rs"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace]
+members = []
+resolver = "3"
+
+[workspace.dependencies]
 interprocess = { version = "2.2.0", features = ["tokio"] }
 tokio = { version = "1.54.0", features = ["rt-multi-thread"] }
+
+[dependencies]
+interprocess = { workspace = true }
+tokio = { workspace = true }

@@ -17,9 +17,9 @@ impl Server {
         Ok(Self { listener })
     }
 
-    pub fn serve(&self) -> io::Result<()> {
+    pub async fn serve(&self) -> io::Result<()> {
         loop {
-            let connection = match self.listener.accept() {
+            let connection = match self.listener.accept().await {
                 Ok(c) => c,
                 Err(_) => continue,
             };

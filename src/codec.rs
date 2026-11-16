@@ -1,3 +1,5 @@
+use bitcode::{Decode, Encode};
+use bytes::{Bytes, BytesMut};
 use std::io;
 use std::marker::PhantomData;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
@@ -31,5 +33,13 @@ impl<In: for<'a> Decode<'a>, Out> Decoder for BitcodeCodec<In, Out> {
                 .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e)),
             None => Ok(None),
         }
+    }
+}
+
+impl<In, Out: Encode> Encoder<Out> for BitcodeCodec<In, Out> {
+    type Error = io::Error;
+
+    fn encode(&mut self, item: Out, dst: &mut tokio_util::bytes::BytesMut) -> io::Result<()> {
+        self.inner.encode(Bytes::from(bitcode::encode(&item)), dst)
     }
 }

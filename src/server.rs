@@ -4,9 +4,19 @@ use interprocess::local_socket::{
 };
 use std::io;
 
-pub struct Server {}
+const LISTENER_SOCKET_NAME: &str = "sql_rs.sock";
+
+pub struct Server {
+    listener: Listener,
+}
 
 impl Server {
+    pub fn build() -> io::Result<Self> {
+        let listener = Self::create_socket(LISTENER_SOCKET_NAME)?;
+
+        Ok(Self { listener })
+    }
+
     fn create_socket(socket_name: &str) -> io::Result<Listener> {
         let name = socket_name.to_ns_name::<GenericNamespaced>()?;
         let opts = ListenerOptions::default();

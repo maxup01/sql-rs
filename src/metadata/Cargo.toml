@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 redb = { version = "4.6.0" }
+bitcode = { worksapce = true }

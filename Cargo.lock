@@ -54,6 +54,7 @@ checksum = "c2db04e74f0a9a93103b50e90b96024c9b2bdca8bce6a632ec71b88736d3d359"
 name = "error"
 version = "0.1.0"
 dependencies = [
+ "redb",
  "thiserror",
 ]
 
@@ -183,6 +184,7 @@ name = "metadata"
 version = "0.1.0"
 dependencies = [
  "bitcode",
+ "error",
  "redb",
 ]
 

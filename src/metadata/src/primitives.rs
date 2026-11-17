@@ -1,7 +1,7 @@
 use bitcode::{Decode, Encode};
 use std::{collections::HashMap, vec::Vec};
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Default, Debug, Encode, Decode)]
 pub struct SchemaMetadata {
     pub tables: Vec<String>,
 }

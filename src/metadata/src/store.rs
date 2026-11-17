@@ -1,18 +1,17 @@
-use crate::primitives::SchemaMetadata;
-use redb::{Database, TableDefinition};
+use crate::primitives::{SchemaMetadata, TableMetadata};
+use error::{Error, Result};
+use redb::{Database, ReadableTable, TableDefinition, TableHandle};
 use std::path::Path;
 
 const SCHEMA_METADATA_TABLE: TableDefinition<&str, SchemaMetadata> =
     TableDefinition::new("schema_metadata_table");
-const TABLE_METADATA_TABLE: TableDefinition<&str, SchemaMetadata> =
-    TableDefinition::new("table_metadata_table");
 
 pub struct MetadataStore {
     db: Database,
 }
 
 impl MetadataStore {
-    pub fn build<P: AsRef<Path>>(directory: P) -> Result<Self, redb::Error> {
+    pub fn build<P: AsRef<Path>>(directory: P) -> Result<Self> {
         const METADATA_STORE_NAME: &str = "sql_rs_metadata_store";
 
         let db_path = directory.as_ref().to_path_buf().join(METADATA_STORE_NAME);
@@ -27,5 +26,30 @@ impl MetadataStore {
         tx.commit()?;
 
         Ok(Self { db })
+    }
+
+    pub fn add_schema(&self, schema_name: &str) -> Result<()> {
+        let name = format!("tables_{}", schema_name);
+        let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
+
+        let tx = self.db.begin_write()?;
+
+        {
+            let mut table = tx.open_table(SCHEMA_METADATA_TABLE)?;
+
+            if table.get(schema_name)?.is_some()
+                || tx.list_tables()?.any(|t| t.name() == def.name())
+            {
+                return Err(Error::SchemaAlreadyExists(schema_name.to_string()));
+            }
+
+            table.insert(schema_name, SchemaMetadata::default())?;
+
+            tx.open_table(def)?;
+        }
+
+        tx.commit()?;
+
+        Ok(())
     }
 }

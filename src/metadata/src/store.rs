@@ -39,7 +39,7 @@ impl MetadataStore {
         Ok(entry)
     }
 
-    pub fn add_schema(&self, schema_name: &str) -> Result<()> {
+    pub fn create_schema(&self, schema_name: &str) -> Result<()> {
         let name = format!("tables_{}", schema_name);
         let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
 

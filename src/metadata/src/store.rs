@@ -81,4 +81,43 @@ impl MetadataStore {
 
         Ok(())
     }
+
+    pub fn create_table(
+        &self,
+        schema_name: &str,
+        table_name: &str,
+        table_metadata: TableMetadata,
+    ) -> Result<()> {
+        let name = format!("tables_{}", schema_name);
+        let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
+
+        let tx = self.db.begin_write()?;
+
+        {
+            let mut schemas = tx.open_table(SCHEMA_METADATA_TABLE)?;
+
+            let mut schema_metadata = match schemas.get(schema_name)? {
+                Some(entry) => entry.value(),
+                None => return Err(Error::SchemaNotFound(schema_name.to_string())),
+            };
+
+            let mut tables = tx.open_table(def)?;
+
+            if tables.get(table_name)?.is_some() {
+                return Err(Error::TableAlreadyExists {
+                    schema: schema_name.to_string(),
+                    table: table_name.to_string(),
+                });
+            }
+
+            tables.insert(table_name, table_metadata)?;
+
+            schema_metadata.tables.push(table_name.to_string());
+            schemas.insert(schema_name, schema_metadata)?;
+        }
+
+        tx.commit()?;
+
+        Ok(())
+    }
 }

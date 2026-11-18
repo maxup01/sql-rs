@@ -1,6 +1,6 @@
 use crate::primitives::{SchemaMetadata, TableMetadata};
 use error::{Error, Result};
-use redb::{Database, ReadableTable, TableDefinition, TableHandle};
+use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition, TableHandle};
 use std::path::Path;
 
 const SCHEMA_METADATA_TABLE: TableDefinition<&str, SchemaMetadata> =
@@ -51,5 +51,16 @@ impl MetadataStore {
         tx.commit()?;
 
         Ok(())
+    }
+
+    pub fn get_schema_metadata(&self, schema_name: &str) -> Result<Option<SchemaMetadata>> {
+        let rx = self.db.begin_read()?;
+
+        let table = rx.open_table(SCHEMA_METADATA_TABLE)?;
+
+        let entry = table.get(schema_name)?;
+        let entry = entry.map(|e| e.value());
+
+        Ok(entry)
     }
 }

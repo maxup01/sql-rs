@@ -28,6 +28,17 @@ impl MetadataStore {
         Ok(Self { db })
     }
 
+    pub fn get_schema_metadata(&self, schema_name: &str) -> Result<Option<SchemaMetadata>> {
+        let rx = self.db.begin_read()?;
+
+        let table = rx.open_table(SCHEMA_METADATA_TABLE)?;
+
+        let entry = table.get(schema_name)?;
+        let entry = entry.map(|e| e.value());
+
+        Ok(entry)
+    }
+
     pub fn add_schema(&self, schema_name: &str) -> Result<()> {
         let name = format!("tables_{}", schema_name);
         let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
@@ -53,14 +64,21 @@ impl MetadataStore {
         Ok(())
     }
 
-    pub fn get_schema_metadata(&self, schema_name: &str) -> Result<Option<SchemaMetadata>> {
-        let rx = self.db.begin_read()?;
+    pub fn delete_schema(&self, schema_name: &str) -> Result<()> {
+        let name = format!("tables_{}", schema_name);
+        let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
 
-        let table = rx.open_table(SCHEMA_METADATA_TABLE)?;
+        let tx = self.db.begin_write()?;
 
-        let entry = table.get(schema_name)?;
-        let entry = entry.map(|e| e.value());
+        {
+            let mut table = tx.open_table(SCHEMA_METADATA_TABLE)?;
+            table.remove(schema_name)?;
 
-        Ok(entry)
+            tx.delete_table(def)?;
+        }
+
+        tx.commit()?;
+
+        Ok(())
     }
 }

@@ -66,7 +66,11 @@ impl redb::Value for TableMetadata {
 }
 
 #[derive(Debug, Encode, Decode)]
-pub struct FieldMetadata {}
+pub struct FieldMetadata {
+    pub name: String,
+    pub data_type: DataType,
+    pub nullable: bool,
+}
 
 impl redb::Value for FieldMetadata {
     type SelfType<'a> = FieldMetadata;
@@ -93,6 +97,16 @@ impl redb::Value for FieldMetadata {
     fn type_name() -> redb::TypeName {
         redb::TypeName::new("sql_rs::FieldMetadata")
     }
+}
+
+#[derive(Debug, Encode, Decode)]
+pub enum DataType {
+    Numeric(NumericType),
+}
+
+#[derive(Debug, Encode, Decode)]
+pub enum NumericType {
+    U8,
 }
 
 #[derive(Debug)]

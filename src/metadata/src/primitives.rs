@@ -94,3 +94,8 @@ impl redb::Value for FieldMetadata {
         redb::TypeName::new("sql_rs::FieldMetadata")
     }
 }
+
+#[derive(Debug)]
+pub struct SchemaDetails {
+    tables: Vec<TableMetadata>,
+}

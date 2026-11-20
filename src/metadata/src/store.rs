@@ -130,11 +130,11 @@ impl MetadataStore {
 
         let entries = table
             .iter()?
-            .filter_map(|item| {
-                let (key, value) = item.ok()?;
-                Some((key.value().to_string(), value.value()))
+            .map(|item| {
+                let (key, value) = item?;
+                Ok((key.value().to_string(), value.value()))
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<Result<HashMap<_, _>>>()?;
 
         Ok(SchemaDetails { tables: entries })
     }

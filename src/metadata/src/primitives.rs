@@ -97,5 +97,5 @@ impl redb::Value for FieldMetadata {
 
 #[derive(Debug)]
 pub struct SchemaDetails {
-    tables: Vec<TableMetadata>,
+    pub tables: Vec<(String, TableMetadata)>,
 }

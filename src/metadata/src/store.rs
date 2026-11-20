@@ -138,4 +138,36 @@ impl MetadataStore {
 
         Ok(SchemaDetails { tables: entries })
     }
+
+    pub fn delete_table(&self, schema_name: &str, table_name: &str) -> Result<()> {
+        let name = format!("tables_{}", schema_name);
+        let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
+
+        let tx = self.db.begin_write()?;
+
+        {
+            let mut schemas = tx.open_table(SCHEMA_METADATA_TABLE)?;
+
+            let mut schema_metadata = match schemas.get(schema_name)? {
+                Some(entry) => entry.value(),
+                None => return Err(Error::SchemaNotFound(schema_name.to_string())),
+            };
+
+            let mut tables = tx.open_table(def)?;
+
+            if tables.remove(table_name)?.is_none() {
+                return Err(Error::TableNotFound {
+                    schema: schema_name.to_string(),
+                    table: table_name.to_string(),
+                });
+            }
+
+            schema_metadata.tables.retain(|t| t != table_name);
+            schemas.insert(schema_name, schema_metadata)?;
+        }
+
+        tx.commit()?;
+
+        Ok(())
+    }
 }

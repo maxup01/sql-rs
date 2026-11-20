@@ -1,7 +1,7 @@
-use crate::primitives::{SchemaMetadata, TableMetadata};
+use crate::primitives::{SchemaDetails, SchemaMetadata, TableMetadata};
 use error::{Error, Result};
 use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition, TableHandle};
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 const SCHEMA_METADATA_TABLE: TableDefinition<&str, SchemaMetadata> =
     TableDefinition::new("schema_metadata_table");
@@ -119,5 +119,23 @@ impl MetadataStore {
         tx.commit()?;
 
         Ok(())
+    }
+
+    pub fn get_schema_details(&self, schema_name: &str) -> Result<SchemaDetails> {
+        let name = format!("tables_{}", schema_name);
+        let def: TableDefinition<&str, TableMetadata> = TableDefinition::new(&name);
+
+        let rx = self.db.begin_read()?;
+        let table = rx.open_table(def)?;
+
+        let entries = table
+            .iter()?
+            .filter_map(|item| {
+                let (key, value) = item.ok()?;
+                Some((key.value().to_string(), value.value()))
+            })
+            .collect::<HashMap<_, _>>();
+
+        Ok(SchemaDetails { tables: entries })
     }
 }

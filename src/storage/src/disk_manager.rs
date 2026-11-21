@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, hash_map::Entry},
     fs::{File, OpenOptions},
     path::{Path, PathBuf},
 };
@@ -67,6 +67,33 @@ impl DiskManager {
             files,
             page_numbers,
         })
+    }
+
+    pub fn allocate_page(&mut self, rel_id: RelationId) -> crate::Result<PageId> {
+        let page = *self.page_numbers.get(&rel_id).unwrap_or(&0);
+        let segment = page / PAGES_PER_SEGMENT as u64;
+        let offset = (page % PAGES_PER_SEGMENT as u64) * PAGE_SIZE as u64;
+
+        let file = self.segment_file(rel_id, segment)?;
+        file.write_all_at(&[0u8; PAGE_SIZE], offset)?;
+
+        self.page_numbers.insert(rel_id, page + 1);
+        Ok(PageId(page))
+    }
+
+    fn segment_file(&mut self, rel_id: RelationId, segment: u64) -> crate::Result<&File> {
+        match self.files.entry((rel_id, segment)) {
+            Entry::Occupied(entry) => Ok(entry.into_mut()),
+            Entry::Vacant(entry) => {
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(self.root.join(segment_name(rel_id, segment)))?;
+
+                Ok(entry.insert(file))
+            }
+        }
     }
 }
 

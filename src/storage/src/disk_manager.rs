@@ -24,6 +24,7 @@ pub struct DiskManager {
     root: PathBuf,
     // Open segment files, keyed by (relation, segment number)
     files: HashMap<(RelationId, u64), File>,
+    page_numbers: HashMap<RelationId, u64>,
 }
 
 impl DiskManager {
@@ -36,6 +37,7 @@ impl DiskManager {
         }
 
         let mut files = HashMap::new();
+        let mut page_numbers = HashMap::new();
 
         for entry in std::fs::read_dir(&path)? {
             let entry = entry?;
@@ -45,7 +47,8 @@ impl DiskManager {
             }
 
             // Skip files that are not segments, e.g. a future LOCK or header file
-            let Some(key) = entry.file_name().to_str().and_then(parse_segment_name) else {
+            let Some((rel_id, segment)) = entry.file_name().to_str().and_then(parse_segment_name)
+            else {
                 continue;
             };
 
@@ -53,10 +56,17 @@ impl DiskManager {
                 .read(true)
                 .write(true)
                 .open(entry.path())?;
-            files.insert(key, file);
+            let metadata = file.metadata()?;
+
+            files.insert((rel_id, segment), file);
+            page_numbers.insert(rel_id, metadata.len() / (PAGE_SIZE as u64));
         }
 
-        Ok(Self { root: path, files })
+        Ok(Self {
+            root: path,
+            files,
+            page_numbers,
+        })
     }
 }
 

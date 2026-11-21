@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, hash_map::Entry},
     fs::{File, OpenOptions},
+    os::unix::fs::FileExt,
     path::{Path, PathBuf},
 };
 
@@ -67,6 +68,21 @@ impl DiskManager {
             files,
             page_numbers,
         })
+    }
+
+    pub fn write_page(
+        &mut self,
+        rel_id: RelationId,
+        page: PageId,
+        buf: &[u8; PAGE_SIZE],
+    ) -> crate::Result<()> {
+        let segment = page.0 / PAGES_PER_SEGMENT as u64;
+        let offset = (page.0 % PAGES_PER_SEGMENT as u64) * PAGE_SIZE as u64;
+
+        let file = self.segment_file(rel_id, segment)?;
+        file.write_all_at(buf, offset)?;
+
+        Ok(())
     }
 
     pub fn allocate_page(&mut self, rel_id: RelationId) -> crate::Result<PageId> {

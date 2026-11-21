@@ -60,7 +60,10 @@ impl DiskManager {
             let metadata = file.metadata()?;
 
             files.insert((rel_id, segment), file);
-            page_numbers.insert(rel_id, metadata.len() / (PAGE_SIZE as u64));
+            page_numbers.insert(
+                rel_id,
+                *page_numbers.get(&rel_id).unwrap_or(&0) + (metadata.len() / (PAGE_SIZE as u64)),
+            );
         }
 
         Ok(Self {

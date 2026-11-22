@@ -73,6 +73,29 @@ impl DiskManager {
         })
     }
 
+    pub fn read_page(
+        &self,
+        rel_id: RelationId,
+        page: PageId,
+        buf: &mut [u8; PAGE_SIZE],
+    ) -> crate::Result<()> {
+        let segment = page.0 / PAGES_PER_SEGMENT as u64;
+        let pages = *self.page_numbers.get(&rel_id).unwrap_or(&0);
+        let offset = page.0 % (PAGES_PER_SEGMENT as u64);
+
+        if page.0 >= pages {
+            return Err(StorageError::PageNotFound { rel_id, page });
+        }
+
+        let file = OpenOptions::new()
+            .read(true)
+            .create(false)
+            .open(self.root.join(segment_name(rel_id, segment)))?;
+        file.read_exact_at(buf, offset)?;
+
+        Ok(())
+    }
+
     pub fn write_page(
         &mut self,
         rel_id: RelationId,

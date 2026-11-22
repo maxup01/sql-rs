@@ -1,4 +1,4 @@
-use crate::disk_manager::RelationId;
+use crate::disk_manager::{PageId, RelationId};
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -12,6 +12,9 @@ pub enum StorageError {
 
     #[error("column with relation id {} does not exist", .0.0)]
     ColumnNotFound(RelationId),
+
+    #[error("page {} of relation id {} does not exist", .page.0, .rel_id.0)]
+    PageNotFound { rel_id: RelationId, page: PageId },
 }
 
 pub type Result<T> = std::result::Result<T, StorageError>;

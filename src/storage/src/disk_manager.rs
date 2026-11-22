@@ -105,7 +105,7 @@ impl DiskManager {
         let segment = page.0 / PAGES_PER_SEGMENT as u64;
         let offset = (page.0 % PAGES_PER_SEGMENT as u64) * PAGE_SIZE as u64;
 
-        let file = self.segment_file(rel_id, segment)?;
+        let file = self.segment_file(rel_id, segment, false)?;
         file.write_all_at(buf, offset)?;
 
         Ok(())
@@ -116,21 +116,26 @@ impl DiskManager {
         let segment = page / PAGES_PER_SEGMENT as u64;
         let offset = (page % PAGES_PER_SEGMENT as u64) * PAGE_SIZE as u64;
 
-        let file = self.segment_file(rel_id, segment)?;
+        let file = self.segment_file(rel_id, segment, true)?;
         file.write_all_at(&[0u8; PAGE_SIZE], offset)?;
 
         self.page_numbers.insert(rel_id, page + 1);
         Ok(PageId(page))
     }
 
-    fn segment_file(&mut self, rel_id: RelationId, segment: u64) -> crate::Result<&File> {
+    fn segment_file(
+        &mut self,
+        rel_id: RelationId,
+        segment: u64,
+        create: bool,
+    ) -> crate::Result<&File> {
         match self.files.entry((rel_id, segment)) {
             Entry::Occupied(entry) => Ok(entry.into_mut()),
             Entry::Vacant(entry) => {
                 let file = OpenOptions::new()
                     .read(true)
                     .write(true)
-                    .create(true)
+                    .create(create)
                     .open(self.root.join(segment_name(rel_id, segment)))?;
 
                 Ok(entry.insert(file))

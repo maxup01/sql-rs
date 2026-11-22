@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, hash_map::Entry},
     fs::{File, OpenOptions},
+    io,
     os::unix::fs::FileExt,
     path::{Path, PathBuf},
 };
@@ -123,6 +124,45 @@ impl DiskManager {
         Ok(PageId(page))
     }
 
+    // Allocates n contiguous pages and returns the first one. Either all n pages
+    // are allocated or none
+    pub fn allocate_extent(&mut self, rel_id: RelationId, n: u64) -> crate::Result<PageId> {
+        if n == 0 || n > PAGES_PER_SEGMENT as u64 {
+            return Err(StorageError::InvalidExtentSize(n));
+        }
+
+        let first_page = *self.page_numbers.get(&rel_id).unwrap_or(&0);
+        let mut written_parts: Vec<(u64, u64)> = Vec::new();
+        let mut allocated = 0;
+
+        while allocated < n {
+            let page = first_page + allocated;
+            let segment = page / PAGES_PER_SEGMENT as u64;
+            let page_in_segment = page % PAGES_PER_SEGMENT as u64;
+            let count = (n - allocated).min(PAGES_PER_SEGMENT as u64 - page_in_segment);
+            let offset = page_in_segment * PAGE_SIZE as u64;
+
+            let result = self
+                .segment_file(rel_id, segment, true)
+                .and_then(|file| Ok(zero_pages(file, offset, count)?));
+
+            if let Err(e) = result {
+                for (segment, offset) in written_parts {
+                    if let Some(file) = self.files.get(&(rel_id, segment)) {
+                        let _ = file.set_len(offset);
+                    }
+                }
+                return Err(e);
+            }
+
+            written_parts.push((segment, offset));
+            allocated += count;
+        }
+
+        self.page_numbers.insert(rel_id, first_page + n);
+        Ok(PageId(first_page))
+    }
+
     fn segment_file(
         &mut self,
         rel_id: RelationId,
@@ -142,6 +182,19 @@ impl DiskManager {
             }
         }
     }
+}
+
+// Appends count zeroed pages at offset, which must be the current end of the file.
+// On failure the file is truncated back to offset, so no partial pages are left behind
+fn zero_pages(file: &File, offset: u64, count: u64) -> io::Result<()> {
+    for i in 0..count {
+        if let Err(e) = file.write_all_at(&[0; PAGE_SIZE], offset + i * PAGE_SIZE as u64) {
+            let _ = file.set_len(offset);
+            return Err(e);
+        }
+    }
+
+    Ok(())
 }
 
 // Segment files are named "rel_<relation id>.<segment number>", e.g. "rel_17.0"

@@ -163,6 +163,13 @@ impl DiskManager {
         Ok(PageId(first_page))
     }
 
+    pub fn number_of_pages(&self, rel_id: RelationId) -> crate::Result<u64> {
+        self.page_numbers
+            .get(&rel_id)
+            .map(|v| *v)
+            .ok_or(StorageError::ColumnNotFound(rel_id))
+    }
+
     fn segment_file(
         &mut self,
         rel_id: RelationId,

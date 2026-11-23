@@ -1,4 +1,4 @@
-use crate::disk_manager::{PageId, RelationId};
+use common::{PageId, RelationId};
 use std::path::PathBuf;
 use thiserror::Error;
 

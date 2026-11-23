@@ -3,6 +3,9 @@ use std::vec::Vec;
 
 #[derive(Debug, Encode, Decode)]
 pub struct WALEntry {
-    pub row_id: u64,
-    pub record_bytes: Vec<u8>,
+    pub log_sequence_number: u64,
+    pub transaction_id: u64,
+    pub record: WALRecord,
 }
+
+pub enum WALRecord {}

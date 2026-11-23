@@ -1,14 +1,15 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use bitcode::{Decode, Encode};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// 16KB
+pub const PAGE_SIZE: usize = 16_384;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+// Identifier of a column which is unique across database
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encode, Decode)]
+pub struct RelationId(pub u32);
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]
+pub struct PageId(pub u64);
+
+// Position of a record in the WAL, only grows
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]
+pub struct LogSequenceNumber(pub u64);

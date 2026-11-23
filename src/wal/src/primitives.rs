@@ -1,3 +1,4 @@
+use bitcode::{Decode, Encode};
 use std::vec::Vec;
 
 #[derive(Debug, Encode, Decode)]

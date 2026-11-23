@@ -1,12 +1,18 @@
 use crate::{TransactionId, WALEntry, WALError, WALRecord};
 use bitcode::{Decode, Encode};
-use common::LogSequenceNumber;
+use common::{LogSequenceNumber, PAGE_SIZE};
 use std::{
     fs::{File, OpenOptions},
     io::{Seek, SeekFrom, Write},
     marker::PhantomData,
     path::{Path, PathBuf},
 };
+
+const FRAME_HEADER_SIZE: usize = 8;
+
+// Largest payload a record may have: a full page image plus room for the rest of the entry.
+// Recovery treats a len of 0 or above this as the end of the valid log, so append never writes one
+const MAX_RECORD_SIZE: usize = 2 * PAGE_SIZE;
 
 // T is the type stored in WALRecord::Data, e.g. a page change defined by storage
 pub struct WALManager<T> {
@@ -59,6 +65,44 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
             next_lsn,
             _record: PhantomData,
         })
+    }
+
+    // Appends a record to the end of the active WAL file and returns its LSN.
+    // The record is handed to the OS but not fsynced
+    pub fn append(
+        &mut self,
+        transaction_id: TransactionId,
+        record: WALRecord<T>,
+    ) -> crate::Result<LogSequenceNumber> {
+        let log_sequence_number = self.next_lsn;
+        let entry = WALEntry {
+            log_sequence_number,
+            transaction_id,
+            record,
+        };
+
+        let payload = bitcode::encode(&entry);
+
+        if payload.is_empty() || payload.len() > MAX_RECORD_SIZE {
+            return Err(WALError::InvalidRecordSize {
+                size: payload.len(),
+                max: MAX_RECORD_SIZE,
+            });
+        }
+
+        let mut frame = Vec::with_capacity(FRAME_HEADER_SIZE + payload.len());
+        frame.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        frame.extend_from_slice(&crc32fast::hash(&payload).to_le_bytes());
+        frame.extend_from_slice(&payload);
+
+        if let Err(e) = self.file.write_all(&frame) {
+            let _ = self.file.set_len(log_sequence_number.0);
+            let _ = self.file.seek(SeekFrom::Start(log_sequence_number.0));
+            return Err(e.into());
+        }
+
+        self.next_lsn = LogSequenceNumber(log_sequence_number.0 + frame.len() as u64);
+        Ok(log_sequence_number)
     }
 }
 

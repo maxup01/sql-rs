@@ -2,7 +2,6 @@ use crate::{TransactionId, WALEntry, WALError, WALRecord};
 use bitcode::{Decode, Encode};
 use common::LogSequenceNumber;
 use std::{
-    collections::HashMap,
     fs::{File, OpenOptions},
     io::{Seek, SeekFrom, Write},
     marker::PhantomData,
@@ -27,19 +26,32 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
             return Err(WALError::WALDirectoryNotFound(path));
         }
 
-        // Names are zero-padded, so the newest WAL file is the greatest name
-        let name = match files.keys().filter(|name| name.starts_with("wal_")).max() {
-            Some(name) => name.clone(),
-            None => wal_file_name(0),
-        };
+        // The newest WAL file is the one with the greatest number
+        let mut newest = None;
 
-        let file = OpenOptions::new()
+        for entry in std::fs::read_dir(&path)? {
+            let entry = entry?;
+
+            if !entry.file_type()?.is_file() {
+                continue;
+            }
+
+            // Skip files that are not WAL files, e.g. a future LOCK or header file
+            let Some(number) = entry.file_name().to_str().and_then(parse_wal_file_name) else {
+                continue;
+            };
+
+            newest = newest.max(Some(number));
+        }
+
+        let mut file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(path.join(&name))?;
+            .open(path.join(wal_file_name(newest.unwrap_or(0))))?;
 
-        let next_lsn = LogSequenceNumber(files[&active].metadata()?.len());
+        // Records are appended, so writing starts at the end of the file
+        let next_lsn = LogSequenceNumber(file.seek(SeekFrom::End(0))?);
 
         Ok(Self {
             root: path,
@@ -53,4 +65,8 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
 // WAL files are named "wal_<number>", zero-padded so they sort by name, e.g. "wal_0000000000"
 fn wal_file_name(number: u64) -> String {
     format!("wal_{number:010}")
+}
+
+fn parse_wal_file_name(name: &str) -> Option<u64> {
+    name.strip_prefix("wal_")?.parse().ok()
 }

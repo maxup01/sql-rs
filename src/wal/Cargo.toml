@@ -7,3 +7,4 @@ edition = "2024"
 bitcode = { workspace = true }
 thiserror = { workspace = true }
 common = { path = "../common" }
+crc32fast = { workspace = true }

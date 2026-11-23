@@ -16,6 +16,7 @@ bytes = { version = "1.12.0" }
 futures = { version = "0.3.0" }
 redb = { version = "4.6.0" }
 thiserror = { version = "2.0.0" }
+crc32fast = { version = "1.5.0" }
 
 [dependencies]
 interprocess = { workspace = true }

@@ -4,4 +4,4 @@ mod primitives;
 
 pub use error::{Result, WALError};
 pub use manager::WALManager;
-pub use primitives::WALEntry;
+pub use primitives::{TransactionId, WALEntry, WALRecord};

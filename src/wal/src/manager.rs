@@ -1,17 +1,24 @@
-use crate::{WALEntry, WALError};
+use crate::{TransactionId, WALEntry, WALError, WALRecord};
+use bitcode::{Decode, Encode};
+use common::LogSequenceNumber;
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
-    io::{Seek, SeekFrom},
+    io::{Seek, SeekFrom, Write},
+    marker::PhantomData,
     path::{Path, PathBuf},
 };
 
-pub struct WALManager {
+// T is the type stored in WALRecord::Data, e.g. a page change defined by storage
+pub struct WALManager<T> {
     root: PathBuf,
-    files: HashMap<String, File>,
+    file: File,
+    // LSN of the next record, which is its byte position in the active file
+    next_lsn: LogSequenceNumber,
+    _record: PhantomData<T>,
 }
 
-impl WALManager {
+impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
     pub fn open<P: AsRef<Path>>(root: P) -> crate::Result<Self> {
         let exists = std::fs::exists(&root)?;
         let path = root.as_ref().to_path_buf();
@@ -20,31 +27,30 @@ impl WALManager {
             return Err(WALError::WALDirectoryNotFound(path));
         }
 
-        let mut files = HashMap::new();
+        // Names are zero-padded, so the newest WAL file is the greatest name
+        let name = match files.keys().filter(|name| name.starts_with("wal_")).max() {
+            Some(name) => name.clone(),
+            None => wal_file_name(0),
+        };
 
-        for entry in std::fs::read_dir(&path)? {
-            let entry = entry?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path.join(&name))?;
 
-            if !entry.file_type()?.is_file() {
-                continue;
-            }
+        let next_lsn = LogSequenceNumber(files[&active].metadata()?.len());
 
-            let file_name = entry.file_name();
-
-            // Skip files that are not segments, e.g. a future LOCK or header file
-            let Some(file_name) = file_name.to_str() else {
-                continue;
-            };
-
-            let mut file = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(entry.path())?;
-            let _ = file.seek(SeekFrom::End(0))?;
-
-            files.insert(file_name.to_string(), file);
-        }
-
-        Ok(Self { root: path, files })
+        Ok(Self {
+            root: path,
+            file,
+            next_lsn,
+            _record: PhantomData,
+        })
     }
+}
+
+// WAL files are named "wal_<number>", zero-padded so they sort by name, e.g. "wal_0000000000"
+fn wal_file_name(number: u64) -> String {
+    format!("wal_{number:010}")
 }

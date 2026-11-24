@@ -3,7 +3,7 @@ use bitcode::{Decode, Encode};
 use common::{LogSequenceNumber, PAGE_SIZE};
 use std::{
     fs::{File, OpenOptions},
-    io::{Seek, SeekFrom, Write},
+    io::{self, BufReader, Read, Seek, SeekFrom, Write},
     marker::PhantomData,
     path::{Path, PathBuf},
 };
@@ -20,6 +20,7 @@ pub struct WALManager<T> {
     file: File,
     // LSN of the next record, which is its byte position in the active file
     next_lsn: LogSequenceNumber,
+    flushed_lsn: LogSequenceNumber,
     _record: PhantomData<T>,
 }
 
@@ -56,13 +57,20 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
             .create(true)
             .open(path.join(wal_file_name(newest.unwrap_or(0))))?;
 
-        // Records are appended, so writing starts at the end of the file
-        let next_lsn = LogSequenceNumber(file.seek(SeekFrom::End(0))?);
+        let valid_end = find_valid_end(&file)?;
+
+        if valid_end < file.metadata()?.len() {
+            file.set_len(valid_end)?;
+            file.sync_data()?;
+        }
+
+        let next_lsn = LogSequenceNumber(file.seek(SeekFrom::Start(valid_end))?);
 
         Ok(Self {
             root: path,
             file,
             next_lsn,
+            flushed_lsn: next_lsn,
             _record: PhantomData,
         })
     }
@@ -104,6 +112,42 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
         self.next_lsn = LogSequenceNumber(log_sequence_number.0 + frame.len() as u64);
         Ok(log_sequence_number)
     }
+}
+
+// Walks the records from the start of the file and returns the position right after
+// the last valid one.
+fn find_valid_end(file: &File) -> io::Result<u64> {
+    let file_len = file.metadata()?.len();
+
+    let mut reader = BufReader::new(file);
+    reader.seek(SeekFrom::Start(0))?;
+
+    let mut position = 0;
+    let mut header = [0u8; FRAME_HEADER_SIZE];
+    let mut payload = Vec::new();
+
+    while position + FRAME_HEADER_SIZE as u64 <= file_len {
+        reader.read_exact(&mut header)?;
+        let [l0, l1, l2, l3, c0, c1, c2, c3] = header;
+        let len = u32::from_le_bytes([l0, l1, l2, l3]) as usize;
+        let crc = u32::from_le_bytes([c0, c1, c2, c3]);
+
+        let record_end = position + (FRAME_HEADER_SIZE + len) as u64;
+        if len == 0 || len > MAX_RECORD_SIZE || record_end > file_len {
+            break;
+        }
+
+        payload.resize(len, 0);
+        reader.read_exact(&mut payload)?;
+
+        if crc32fast::hash(&payload) != crc {
+            break;
+        }
+
+        position = record_end;
+    }
+
+    Ok(position)
 }
 
 // WAL files are named "wal_<number>", zero-padded so they sort by name, e.g. "wal_0000000000"

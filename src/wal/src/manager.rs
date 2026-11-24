@@ -112,6 +112,17 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
         self.next_lsn = LogSequenceNumber(log_sequence_number.0 + frame.len() as u64);
         Ok(log_sequence_number)
     }
+
+    pub fn flush(&mut self, up_to: LogSequenceNumber) -> crate::Result<()> {
+        if up_to <= self.flushed_lsn {
+            return Ok(());
+        }
+
+        self.file.sync_data()?;
+        self.flushed_lsn = self.next_lsn;
+
+        Ok(())
+    }
 }
 
 // Walks the records from the start of the file and returns the position right after

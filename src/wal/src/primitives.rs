@@ -15,7 +15,7 @@ pub struct WALEntry<P> {
 #[derive(Debug, Encode, Decode)]
 pub enum WALRecord<T> {
     Data(T),
-    Commit,
+    Commit(TransactionId),
     Checkpoint { redo_from: LogSequenceNumber },
 }
 

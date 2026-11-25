@@ -1,4 +1,4 @@
-use crate::{WALEntry, WALError, WALRecord};
+use crate::{WALEntry, WALError, WALIterator, WALRecord};
 use bitcode::{Decode, Encode};
 use common::{LogSequenceNumber, PAGE_SIZE};
 use std::{
@@ -117,6 +117,12 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
         self.flushed_lsn = self.next_lsn;
 
         Ok(())
+    }
+
+    pub fn iter_from(&self, lsn: LogSequenceNumber) -> crate::Result<WALIterator<T>> {
+        let handle = self.file.try_clone()?;
+
+        WALIterator::new(handle, lsn)
     }
 }
 

@@ -8,11 +8,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const FRAME_HEADER_SIZE: usize = 8;
+pub(crate) const FRAME_HEADER_SIZE: usize = 8;
 
 // Largest payload a record may have: a full page image plus room for the rest of the entry.
 // Recovery treats a len of 0 or above this as the end of the valid log, so append never writes one
-const MAX_RECORD_SIZE: usize = 2 * PAGE_SIZE;
+pub(crate) const MAX_RECORD_SIZE: usize = 2 * PAGE_SIZE;
 
 // T is the type stored in WALRecord::Data, e.g. a page change defined by storage
 pub struct WALManager<T> {

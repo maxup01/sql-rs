@@ -1,4 +1,5 @@
 mod error;
+mod iterator;
 mod manager;
 mod primitives;
 

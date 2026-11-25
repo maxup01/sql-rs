@@ -8,15 +8,19 @@ pub struct TransactionId(pub u64);
 #[derive(Debug, Encode, Decode)]
 pub struct WALEntry<P> {
     pub log_sequence_number: LogSequenceNumber,
-    pub transaction_id: TransactionId,
     pub record: WALRecord<P>,
 }
 
 #[derive(Debug, Encode, Decode)]
 pub enum WALRecord<T> {
-    Data(T),
+    Data {
+        transaction_id: TransactionId,
+        change: T,
+    },
     Commit(TransactionId),
-    Checkpoint { redo_from: LogSequenceNumber },
+    Checkpoint {
+        redo_from: LogSequenceNumber,
+    },
 }
 
 #[derive(Debug, Encode, Decode)]

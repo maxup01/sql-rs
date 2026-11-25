@@ -1,4 +1,4 @@
-use crate::{TransactionId, WALEntry, WALError, WALRecord};
+use crate::{WALEntry, WALError, WALRecord};
 use bitcode::{Decode, Encode};
 use common::{LogSequenceNumber, PAGE_SIZE};
 use std::{
@@ -77,15 +77,10 @@ impl<T: Encode + for<'a> Decode<'a>> WALManager<T> {
 
     // Appends a record to the end of the active WAL file and returns its LSN.
     // The record is handed to the OS but not fsynced
-    pub fn append(
-        &mut self,
-        transaction_id: TransactionId,
-        record: WALRecord<T>,
-    ) -> crate::Result<LogSequenceNumber> {
+    pub fn append(&mut self, record: WALRecord<T>) -> crate::Result<LogSequenceNumber> {
         let log_sequence_number = self.next_lsn;
         let entry = WALEntry {
             log_sequence_number,
-            transaction_id,
             record,
         };
 

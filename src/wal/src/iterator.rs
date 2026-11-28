@@ -86,7 +86,7 @@ impl<T: for<'a> Decode<'a>> Iterator for WALIterator<T> {
 
         let result = self.read_next().transpose();
 
-        if let Some(Ok(_)) = result {
+        if let None = result {
             self.finished = true;
         }
 

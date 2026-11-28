@@ -74,7 +74,7 @@ impl DiskManager {
     ) -> crate::Result<()> {
         let segment = page.0 / PAGES_PER_SEGMENT as u64;
         let pages = *self.page_numbers.get(&rel_id).unwrap_or(&0);
-        let offset = page.0 % (PAGES_PER_SEGMENT as u64);
+        let offset = page.0 % (PAGES_PER_SEGMENT as u64) * PAGE_SIZE as u64;
 
         if page.0 >= pages {
             return Err(StorageError::PageNotFound { rel_id, page });
